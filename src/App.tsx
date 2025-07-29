@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Navbar } from "@/components/layout/Navbar";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
+import Machines from "./pages/Machines";
+import Production from "./pages/Production";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,13 +30,13 @@ const App = () => (
             <Route path="/machines" element={
               <>
                 <Navbar />
-                <div className="p-6"><h1 className="text-2xl font-bold">Cadastro de Máquinas - Em desenvolvimento</h1></div>
+                <Machines />
               </>
             } />
             <Route path="/production" element={
               <>
                 <Navbar />
-                <div className="p-6"><h1 className="text-2xl font-bold">Registro de Produção - Em desenvolvimento</h1></div>
+                <Production />
               </>
             } />
             <Route path="/reports" element={
