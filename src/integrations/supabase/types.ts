@@ -14,7 +14,114 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      machines: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          name: string
+          sector: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+          sector: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          sector?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      production_records: {
+        Row: {
+          actual_production: number
+          created_at: string
+          date: string
+          defective_units: number
+          downtime_minutes: number
+          downtime_reason: string | null
+          id: string
+          machine_id: string
+          planned_production: number
+          shift_id: string
+          updated_at: string
+        }
+        Insert: {
+          actual_production: number
+          created_at?: string
+          date: string
+          defective_units?: number
+          downtime_minutes?: number
+          downtime_reason?: string | null
+          id?: string
+          machine_id: string
+          planned_production: number
+          shift_id: string
+          updated_at?: string
+        }
+        Update: {
+          actual_production?: number
+          created_at?: string
+          date?: string
+          defective_units?: number
+          downtime_minutes?: number
+          downtime_reason?: string | null
+          id?: string
+          machine_id?: string
+          planned_production?: number
+          shift_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_records_machine_id_fkey"
+            columns: ["machine_id"]
+            isOneToOne: false
+            referencedRelation: "machines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_records_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "shifts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shifts: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          name: string
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          name: string
+          start_time: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          name?: string
+          start_time?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
