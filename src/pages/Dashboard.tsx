@@ -26,23 +26,86 @@ interface ProductionRecord {
   machines: Machine;
 }
 
-interface OEEData {
+interface OEEMetrics {
   availability: number;
   performance: number;
   quality: number;
   oee: number;
 }
 
-// Função para calcular OEE
-function calculateOEE(record: ProductionRecord): OEEData {
+interface DashboardMetrics {
+  averageOEE: number;
+  averageAvailability: number;
+  averagePerformance: number;
+  averageQuality: number;
+  totalRecords: number;
+  todayRecords: number;
+}
+
+// Função para calcular OEE de um registro
+function calculateOEE(record: ProductionRecord): OEEMetrics {
   const shiftMinutes = 8 * 60; // 8 horas por turno
   const availability = ((shiftMinutes - record.downtime_minutes) / shiftMinutes) * 100;
-  const performance = (record.actual_production / record.planned_production) * 100;
+  const performance = record.planned_production > 0 ? (record.actual_production / record.planned_production) * 100 : 0;
   const goodUnits = record.actual_production - record.defective_units;
-  const quality = (goodUnits / record.actual_production) * 100;
+  const quality = record.actual_production > 0 ? (goodUnits / record.actual_production) * 100 : 0;
   const oee = (availability * performance * quality) / 10000;
   
-  return { availability, performance, quality, oee };
+  return { 
+    availability: Math.max(0, Math.min(100, availability)), 
+    performance: Math.max(0, Math.min(100, performance)), 
+    quality: Math.max(0, Math.min(100, quality)), 
+    oee: Math.max(0, Math.min(100, oee)) 
+  };
+}
+
+// Função para calcular métricas agregadas
+function calculateDashboardMetrics(records: ProductionRecord[]): DashboardMetrics {
+  if (records.length === 0) {
+    return {
+      averageOEE: 0,
+      averageAvailability: 0,
+      averagePerformance: 0,
+      averageQuality: 0,
+      totalRecords: 0,
+      todayRecords: 0
+    };
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+  const todayRecords = records.filter(r => r.date === today).length;
+
+  // Usar registros dos últimos 7 dias para as métricas principais
+  const last7Days = new Date();
+  last7Days.setDate(last7Days.getDate() - 7);
+  const recentRecords = records.filter(r => new Date(r.date) >= last7Days);
+
+  if (recentRecords.length === 0) {
+    return {
+      averageOEE: 0,
+      averageAvailability: 0,
+      averagePerformance: 0,
+      averageQuality: 0,
+      totalRecords: records.length,
+      todayRecords
+    };
+  }
+
+  const metrics = recentRecords.map(calculateOEE);
+  
+  const averageOEE = metrics.reduce((acc, m) => acc + m.oee, 0) / metrics.length;
+  const averageAvailability = metrics.reduce((acc, m) => acc + m.availability, 0) / metrics.length;
+  const averagePerformance = metrics.reduce((acc, m) => acc + m.performance, 0) / metrics.length;
+  const averageQuality = metrics.reduce((acc, m) => acc + m.quality, 0) / metrics.length;
+
+  return {
+    averageOEE,
+    averageAvailability,
+    averagePerformance,
+    averageQuality,
+    totalRecords: records.length,
+    todayRecords
+  };
 }
 
 function getOEEStatus(value: number) {
@@ -55,9 +118,38 @@ function getOEEStatus(value: number) {
 export default function Dashboard() {
   const [productionRecords, setProductionRecords] = useState<ProductionRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dashboardMetrics, setDashboardMetrics] = useState<DashboardMetrics>({
+    averageOEE: 0,
+    averageAvailability: 0,
+    averagePerformance: 0,
+    averageQuality: 0,
+    totalRecords: 0,
+    todayRecords: 0
+  });
 
   useEffect(() => {
     fetchProductionData();
+    
+    // Configurar realtime updates
+    const channel = supabase
+      .channel('dashboard-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'production_records'
+        },
+        () => {
+          console.log('Dados de produção atualizados, recarregando...');
+          fetchProductionData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   async function fetchProductionData() {
@@ -74,10 +166,17 @@ export default function Dashboard() {
           )
         `)
         .order('date', { ascending: false })
-        .limit(50);
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setProductionRecords(data || []);
+      
+      const records = data || [];
+      setProductionRecords(records);
+      
+      // Calcular métricas do dashboard
+      const metrics = calculateDashboardMetrics(records);
+      setDashboardMetrics(metrics);
+      
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
       toast({
@@ -90,36 +189,63 @@ export default function Dashboard() {
     }
   }
 
-  // Calcular métricas agregadas
-  const latestRecords = productionRecords.slice(0, 4);
-  const averageOEE = latestRecords.length > 0 
-    ? latestRecords.reduce((acc, record) => acc + calculateOEE(record).oee, 0) / latestRecords.length 
-    : 0;
-  
-  const averageAvailability = latestRecords.length > 0
-    ? latestRecords.reduce((acc, record) => acc + calculateOEE(record).availability, 0) / latestRecords.length
-    : 0;
+  // Preparar dados para gráficos
+  const oeeChartData = (() => {
+    // Pegar últimos 7 dias únicos
+    const last7Days = [];
+    const today = new Date();
     
-  const averagePerformance = latestRecords.length > 0
-    ? latestRecords.reduce((acc, record) => acc + calculateOEE(record).performance, 0) / latestRecords.length
-    : 0;
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      last7Days.push(date.toISOString().split('T')[0]);
+    }
+
+    return last7Days.map(date => {
+      const dayRecords = productionRecords.filter(r => r.date === date);
+      
+      if (dayRecords.length === 0) {
+        return {
+          name: new Date(date).toLocaleDateString('pt-BR', { weekday: 'short' }),
+          value: 0
+        };
+      }
+
+      const dayMetrics = dayRecords.map(calculateOEE);
+      const avgOEE = dayMetrics.reduce((acc, m) => acc + m.oee, 0) / dayMetrics.length;
+      
+      return {
+        name: new Date(date).toLocaleDateString('pt-BR', { weekday: 'short' }),
+        value: Math.round(avgOEE)
+      };
+    });
+  })();
+
+  // Dados por máquina (últimos registros de cada máquina)
+  const machineData = (() => {
+    const machineMap = new Map<string, ProductionRecord>();
     
-  const averageQuality = latestRecords.length > 0
-    ? latestRecords.reduce((acc, record) => acc + calculateOEE(record).quality, 0) / latestRecords.length
-    : 0;
+    // Pegar o registro mais recente de cada máquina
+    productionRecords.forEach(record => {
+      const machineId = record.machine_id;
+      if (!machineMap.has(machineId) || 
+          new Date(record.date) > new Date(machineMap.get(machineId)!.date)) {
+        machineMap.set(machineId, record);
+      }
+    });
 
-  // Dados para gráficos
-  const oeeChartData = productionRecords.slice(0, 7).reverse().map(record => ({
-    name: new Date(record.date).toLocaleDateString('pt-BR', { weekday: 'short' }),
-    value: Math.round(calculateOEE(record).oee)
-  }));
+    return Array.from(machineMap.values())
+      .slice(0, 6) // Mostrar só as primeiras 6 máquinas
+      .map(record => {
+        const oee = calculateOEE(record);
+        return {
+          name: record.machines.name,
+          value: Math.round(oee.oee)
+        };
+      });
+  })();
 
-  const machineData = latestRecords.map(record => ({
-    name: record.machines.name,
-    value: Math.round(calculateOEE(record).oee)
-  }));
-
-  const oeeStatus = getOEEStatus(averageOEE);
+  const oeeStatus = getOEEStatus(dashboardMetrics.averageOEE);
 
   if (loading) {
     return (
@@ -140,17 +266,20 @@ export default function Dashboard() {
           <p className="text-muted-foreground">
             Monitoramento da eficiência geral dos equipamentos em tempo real
           </p>
+          <div className="mt-2 text-sm text-muted-foreground">
+            Dados dos últimos 7 dias • Total de {dashboardMetrics.totalRecords} registros • {dashboardMetrics.todayRecords} registros hoje
+          </div>
         </div>
 
         {/* Métricas principais */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="bg-gradient-primary text-primary-foreground">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">OEE Médio</CardTitle>
+              <CardTitle className="text-sm font-medium">OEE Médio (7 dias)</CardTitle>
               <BarChart3 className="h-4 w-4" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{Math.round(averageOEE)}%</div>
+              <div className="text-2xl font-bold">{Math.round(dashboardMetrics.averageOEE)}%</div>
               <Badge variant={oeeStatus.variant} className="mt-1">
                 {oeeStatus.label}
               </Badge>
@@ -163,7 +292,7 @@ export default function Dashboard() {
               <CheckCircle className="h-4 w-4 text-success" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{Math.round(averageAvailability)}%</div>
+              <div className="text-2xl font-bold">{Math.round(dashboardMetrics.averageAvailability)}%</div>
               <p className="text-xs text-muted-foreground">
                 Tempo produtivo vs tempo total
               </p>
@@ -176,7 +305,7 @@ export default function Dashboard() {
               <TrendingUp className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{Math.round(averagePerformance)}%</div>
+              <div className="text-2xl font-bold">{Math.round(dashboardMetrics.averagePerformance)}%</div>
               <p className="text-xs text-muted-foreground">
                 Produção real vs planejada
               </p>
@@ -189,7 +318,7 @@ export default function Dashboard() {
               <AlertTriangle className="h-4 w-4 text-warning" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{Math.round(averageQuality)}%</div>
+              <div className="text-2xl font-bold">{Math.round(dashboardMetrics.averageQuality)}%</div>
               <p className="text-xs text-muted-foreground">
                 Peças boas vs total produzido
               </p>
@@ -223,29 +352,48 @@ export default function Dashboard() {
         )}
 
         {/* Status das máquinas */}
-        {latestRecords.length > 0 && (
+        {machineData.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Status das Máquinas</CardTitle>
+              <CardTitle>Status das Máquinas (Últimos Registros)</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {latestRecords.map((record, index) => {
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {machineData.slice(0, 6).map((machineRecord, index) => {
+                  const record = productionRecords.find(r => r.machines.name === machineRecord.name);
+                  if (!record) return null;
+                  
                   const oeeData = calculateOEE(record);
                   const status = getOEEStatus(oeeData.oee);
                   return (
                     <div key={index} className="p-4 border border-border rounded-lg">
                       <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-medium">{record.machines.name}</h3>
+                        <div>
+                          <h3 className="font-medium">{record.machines.name}</h3>
+                          <p className="text-sm text-muted-foreground">{record.machines.code}</p>
+                        </div>
                         <Badge variant={status.variant}>{status.label}</Badge>
                       </div>
-                      <div className="text-2xl font-bold text-foreground">{Math.round(oeeData.oee)}%</div>
-                      <div className="text-sm text-muted-foreground space-y-1 mt-2">
-                        <div>Disponibilidade: {Math.round(oeeData.availability)}%</div>
-                        <div>Performance: {Math.round(oeeData.performance)}%</div>
-                        <div>Qualidade: {Math.round(oeeData.quality)}%</div>
+                      <div className="text-2xl font-bold text-foreground mb-2">{Math.round(oeeData.oee)}%</div>
+                      <div className="text-sm text-muted-foreground space-y-1 mb-3">
+                        <div className="flex justify-between">
+                          <span>Disponibilidade:</span>
+                          <span>{Math.round(oeeData.availability)}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Performance:</span>
+                          <span>{Math.round(oeeData.performance)}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Qualidade:</span>
+                          <span>{Math.round(oeeData.quality)}%</span>
+                        </div>
+                        <div className="flex justify-between text-xs pt-1 border-t">
+                          <span>Último registro:</span>
+                          <span>{new Date(record.date).toLocaleDateString('pt-BR')}</span>
+                        </div>
                       </div>
-                      <div className="w-full bg-muted rounded-full h-2 mt-2">
+                      <div className="w-full bg-muted rounded-full h-2">
                         <div 
                           className="h-2 rounded-full transition-all duration-500"
                           style={{ 
