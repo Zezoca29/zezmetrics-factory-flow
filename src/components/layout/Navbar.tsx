@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, BarChart3, Settings, FileText, Plus, Layout } from "lucide-react";
+import { Menu, X, BarChart3, Settings, FileText, Plus, Layout, LogOut, User } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 import zezmetricsLogo from "@/assets/zezmetrics-logo.png";
 
 const navigationItems = [
@@ -15,6 +17,23 @@ const navigationItems = [
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao fazer logout",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <nav className="bg-background border-b border-border shadow-industrial">
@@ -51,6 +70,22 @@ export function Navbar() {
                 </Link>
               );
             })}
+            
+            {/* User menu */}
+            <div className="flex items-center space-x-4 ml-4 pl-4 border-l border-border">
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                <User className="h-4 w-4" />
+                <span>{user?.email}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSignOut}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Mobile menu button */}
@@ -89,6 +124,22 @@ export function Navbar() {
                 </Link>
               );
             })}
+            
+            {/* Mobile user menu */}
+            <div className="border-t border-border pt-4 mt-4">
+              <div className="px-3 py-2 text-sm text-muted-foreground">
+                {user?.email}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSignOut}
+                className="w-full justify-start text-muted-foreground hover:text-foreground"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
+              </Button>
+            </div>
           </div>
         </div>
       )}

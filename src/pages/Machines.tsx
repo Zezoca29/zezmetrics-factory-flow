@@ -91,9 +91,14 @@ export default function Machines() {
         });
       } else {
         // Criar nova máquina
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('Usuário não autenticado');
+        }
+        
         const { error } = await supabase
           .from('machines')
-          .insert([formData]);
+          .insert([{ ...formData, user_id: user.id }]);
 
         if (error) throw error;
         

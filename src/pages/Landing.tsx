@@ -50,7 +50,7 @@ export default function Landing() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild variant="industrial" size="lg" className="text-lg px-8 py-3">
-                <Link to="/dashboard">
+                <Link to="/auth">
                   Comece agora
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
@@ -112,7 +112,7 @@ export default function Landing() {
             Comece a monitorar seu OEE hoje mesmo e veja os resultados na sua produção
           </p>
           <Button asChild variant="secondary" size="lg" className="text-lg px-8 py-3">
-            <Link to="/dashboard">
+            <Link to="/auth">
               Iniciar monitoramento
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>

@@ -161,9 +161,14 @@ export default function Production() {
         });
       } else {
         // Criar novo registro
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('Usuário não autenticado');
+        }
+        
         const { error } = await supabase
           .from('production_records')
-          .insert([formData]);
+          .insert([{ ...formData, user_id: user.id }]);
 
         if (error) throw error;
         

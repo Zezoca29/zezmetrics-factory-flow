@@ -22,6 +22,7 @@ export type Database = {
           name: string
           sector: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           code: string
@@ -30,6 +31,7 @@ export type Database = {
           name: string
           sector: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           code?: string
@@ -38,6 +40,7 @@ export type Database = {
           name?: string
           sector?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -54,6 +57,7 @@ export type Database = {
           planned_production: number
           shift_id: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           actual_production: number
@@ -67,6 +71,7 @@ export type Database = {
           planned_production: number
           shift_id: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           actual_production?: number
@@ -80,6 +85,7 @@ export type Database = {
           planned_production?: number
           shift_id?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -97,6 +103,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      profiles: {
+        Row: {
+          company_name: string | null
+          created_at: string
+          id: string
+          role: string | null
+          updated_at: string
+          user_name: string | null
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string
+          id: string
+          role?: string | null
+          updated_at?: string
+          user_name?: string | null
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string
+          id?: string
+          role?: string | null
+          updated_at?: string
+          user_name?: string | null
+        }
+        Relationships: []
       }
       shifts: {
         Row: {
