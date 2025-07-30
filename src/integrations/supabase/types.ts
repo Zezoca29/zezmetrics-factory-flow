@@ -22,7 +22,7 @@ export type Database = {
           name: string
           sector: string
           updated_at: string
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           code: string
@@ -31,7 +31,7 @@ export type Database = {
           name: string
           sector: string
           updated_at?: string
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           code?: string
@@ -40,7 +40,7 @@ export type Database = {
           name?: string
           sector?: string
           updated_at?: string
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -57,7 +57,7 @@ export type Database = {
           planned_production: number
           shift_id: string
           updated_at: string
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           actual_production: number
@@ -71,7 +71,7 @@ export type Database = {
           planned_production: number
           shift_id: string
           updated_at?: string
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           actual_production?: number
@@ -85,7 +85,7 @@ export type Database = {
           planned_production?: number
           shift_id?: string
           updated_at?: string
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: [
           {
