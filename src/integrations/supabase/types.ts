@@ -108,6 +108,7 @@ export type Database = {
         Row: {
           company_name: string | null
           created_at: string
+          email: string | null
           id: string
           role: string | null
           updated_at: string
@@ -116,6 +117,7 @@ export type Database = {
         Insert: {
           company_name?: string | null
           created_at?: string
+          email?: string | null
           id: string
           role?: string | null
           updated_at?: string
@@ -124,6 +126,7 @@ export type Database = {
         Update: {
           company_name?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           role?: string | null
           updated_at?: string
@@ -220,6 +223,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      find_user_by_email: {
+        Args: { user_email: string }
+        Returns: string
+      }
       get_current_viewing_context: {
         Args: Record<PropertyKey, never>
         Returns: string

@@ -165,33 +165,60 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   const sendInvitation = async (userEmail: string, role: string) => {
     if (!user) return { success: false, error: "Usuário não logado" };
 
-    // Buscar usuário pelo email
-    const { data: targetUser, error: userError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', user.id) // Precisa implementar busca por email
-      .single();
+    try {
+      // Buscar usuário pelo email usando a função do banco
+      const { data: targetUserId, error: userError } = await supabase
+        .rpc('find_user_by_email', { user_email: userEmail });
 
-    if (userError || !targetUser) {
-      return { success: false, error: "Usuário não encontrado" };
+      if (userError) {
+        console.error('Erro ao buscar usuário:', userError);
+        return { success: false, error: "Erro ao buscar usuário" };
+      }
+
+      if (!targetUserId) {
+        return { success: false, error: "Usuário com este email não encontrado" };
+      }
+
+      // Verificar se já existe um convite para este usuário
+      const { data: existingInvite } = await supabase
+        .from('user_permissions')
+        .select('id, status')
+        .eq('admin_user_id', user.id)
+        .eq('invited_user_id', targetUserId)
+        .single();
+
+      if (existingInvite) {
+        if (existingInvite.status === 'pending') {
+          return { success: false, error: "Já existe um convite pendente para este usuário" };
+        } else if (existingInvite.status === 'accepted') {
+          return { success: false, error: "Este usuário já tem acesso ao seu dashboard" };
+        }
+      }
+
+      // Criar convite
+      const { error: inviteError } = await supabase
+        .from('user_permissions')
+        .insert({
+          admin_user_id: user.id,
+          invited_user_id: targetUserId,
+          role: role,
+          status: 'pending'
+        });
+
+      if (inviteError) {
+        console.error('Erro ao criar convite:', inviteError);
+        return { success: false, error: "Erro ao enviar convite" };
+      }
+
+      // TODO: Implementar envio de email de notificação
+      // O email deve ser enviado para userEmail informando sobre o convite
+
+      await refreshPermissions();
+      return { success: true };
+    } catch (error) {
+      console.error('Erro inesperado ao enviar convite:', error);
+      return { success: false, error: "Erro inesperado ao enviar convite" };
     }
-
-    // Criar convite
-    const { error: inviteError } = await supabase
-      .from('user_permissions')
-      .insert({
-        admin_user_id: user.id,
-        invited_user_id: targetUser.id,
-        role: role,
-        status: 'pending'
-      });
-
-    if (inviteError) {
-      return { success: false, error: "Erro ao enviar convite" };
-    }
-
-    await refreshPermissions();
-    return { success: true };
   };
 
   const updateInvitationRole = async (invitationId: string, role: string) => {
