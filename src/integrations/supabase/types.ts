@@ -155,6 +155,66 @@ export type Database = {
         }
         Relationships: []
       }
+      user_context: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          viewing_as_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          viewing_as_user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          viewing_as_user_id?: string
+        }
+        Relationships: []
+      }
+      user_permissions: {
+        Row: {
+          accepted_at: string | null
+          admin_user_id: string
+          created_at: string
+          id: string
+          invited_at: string
+          invited_user_id: string
+          role: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          admin_user_id: string
+          created_at?: string
+          id?: string
+          invited_at?: string
+          invited_user_id: string
+          role?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          admin_user_id?: string
+          created_at?: string
+          id?: string
+          invited_at?: string
+          invited_user_id?: string
+          role?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
