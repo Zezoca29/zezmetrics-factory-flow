@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Machines from "./pages/Machines";
 import Production from "./pages/Production";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -59,7 +60,7 @@ const App = () => (
               <Route path="/settings" element={
                 <ProtectedRoute>
                   <Navbar />
-                  <div className="p-6"><h1 className="text-2xl font-bold">Configurações - Em desenvolvimento</h1></div>
+                  <Settings />
                 </ProtectedRoute>
               } />
               
