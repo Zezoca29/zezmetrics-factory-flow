@@ -220,7 +220,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_current_viewing_context: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      has_permission_to_view: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

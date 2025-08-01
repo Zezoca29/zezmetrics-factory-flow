@@ -9,13 +9,28 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/contexts/PermissionsContext";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Building2, Bell, Shield, Trash2, Save, Eye, EyeOff } from "lucide-react";
+import { User, Building2, Bell, Shield, Trash2, Save, Eye, EyeOff, Users, Mail, CheckCircle, XCircle, UserPlus } from "lucide-react";
 
 export default function Settings() {
   const { user } = useAuth();
+  const { 
+    canDeleteAccount, 
+    canManageUsers, 
+    receivedInvitations, 
+    sentInvitations,
+    acceptInvitation,
+    rejectInvitation,
+    sendInvitation,
+    updateInvitationRole,
+    removeInvitation,
+    refreshPermissions
+  } = usePermissions();
+  
   const [profile, setProfile] = useState({
     user_name: "",
     company_name: "",
@@ -32,6 +47,8 @@ export default function Settings() {
     new: "",
     confirm: ""
   });
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("viewer");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -136,6 +153,76 @@ export default function Settings() {
     }
   };
 
+  const handleSendInvitation = async () => {
+    if (!inviteEmail) {
+      toast({
+        title: "Erro",
+        description: "Digite um email válido",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await sendInvitation(inviteEmail, inviteRole);
+      if (result.success) {
+        toast({
+          title: "Convite enviado",
+          description: "O convite foi enviado com sucesso"
+        });
+        setInviteEmail("");
+        setInviteRole("viewer");
+      } else {
+        toast({
+          title: "Erro",
+          description: result.error || "Erro ao enviar convite",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao enviar convite",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAcceptInvitation = async (invitationId: string) => {
+    try {
+      await acceptInvitation(invitationId);
+      toast({
+        title: "Convite aceito",
+        description: "Você agora tem acesso ao dashboard"
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao aceitar convite",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleRejectInvitation = async (invitationId: string) => {
+    try {
+      await rejectInvitation(invitationId);
+      toast({
+        title: "Convite rejeitado",
+        description: "O convite foi rejeitado"
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao rejeitar convite",
+        variant: "destructive"
+      });
+    }
+  };
+
   const deleteAccount = async () => {
     setLoading(true);
     try {
@@ -165,7 +252,7 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             Perfil
@@ -177,6 +264,21 @@ export default function Settings() {
           <TabsTrigger value="notifications" className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
             Notificações
+          </TabsTrigger>
+          {canManageUsers && (
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Usuários
+            </TabsTrigger>
+          )}
+          <TabsTrigger value="invitations" className="flex items-center gap-2">
+            <Mail className="h-4 w-4" />
+            Convites
+            {receivedInvitations.filter(inv => inv.status === 'pending').length > 0 && (
+              <Badge variant="destructive" className="ml-1 text-xs h-5 w-5 rounded-full p-0 flex items-center justify-center">
+                {receivedInvitations.filter(inv => inv.status === 'pending').length}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="security" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
@@ -342,6 +444,198 @@ export default function Settings() {
                   Salvar Preferências
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {canManageUsers && (
+          <TabsContent value="users" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Gerenciar Usuários</CardTitle>
+                <CardDescription>
+                  Convide usuários para acessar seu dashboard
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex gap-4">
+                  <div className="flex-1 space-y-2">
+                    <Label htmlFor="inviteEmail">Email do Usuário</Label>
+                    <Input
+                      id="inviteEmail"
+                      type="email"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      placeholder="Digite o email do usuário"
+                    />
+                  </div>
+                  <div className="w-48 space-y-2">
+                    <Label htmlFor="inviteRole">Função</Label>
+                    <Select value={inviteRole} onValueChange={setInviteRole}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="viewer">Visualizador</SelectItem>
+                        <SelectItem value="operator">Operador</SelectItem>
+                        <SelectItem value="supervisor">Supervisor</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end">
+                    <Button onClick={handleSendInvitation} disabled={loading}>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Convidar
+                    </Button>
+                  </div>
+                </div>
+
+                {sentInvitations.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h4 className="font-medium mb-4">Convites Enviados</h4>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Usuário</TableHead>
+                            <TableHead>Função</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Data do Convite</TableHead>
+                            <TableHead>Ações</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {sentInvitations.map((invitation) => (
+                            <TableRow key={invitation.id}>
+                              <TableCell>{invitation.invited_user_id}</TableCell>
+                              <TableCell>
+                                <Select 
+                                  value={invitation.role} 
+                                  onValueChange={(value) => updateInvitationRole(invitation.id, value)}
+                                  disabled={invitation.status !== 'pending'}
+                                >
+                                  <SelectTrigger className="w-32">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="viewer">Visualizador</SelectItem>
+                                    <SelectItem value="operator">Operador</SelectItem>
+                                    <SelectItem value="supervisor">Supervisor</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={
+                                  invitation.status === 'accepted' ? 'default' :
+                                  invitation.status === 'pending' ? 'secondary' : 'destructive'
+                                }>
+                                  {invitation.status === 'accepted' ? 'Aceito' :
+                                   invitation.status === 'pending' ? 'Pendente' : 'Rejeitado'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {new Date(invitation.invited_at).toLocaleDateString('pt-BR')}
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => removeInvitation(invitation.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        <TabsContent value="invitations" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Convites Recebidos</CardTitle>
+              <CardDescription>
+                Gerencie os convites que você recebeu de outros usuários
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {receivedInvitations.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Você não possui convites no momento</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>De</TableHead>
+                      <TableHead>Função Atribuída</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Data do Convite</TableHead>
+                      <TableHead>Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {receivedInvitations.map((invitation) => (
+                      <TableRow key={invitation.id}>
+                        <TableCell>{invitation.admin_user_id}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {invitation.role === 'viewer' ? 'Visualizador' :
+                             invitation.role === 'operator' ? 'Operador' : 'Supervisor'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            invitation.status === 'accepted' ? 'default' :
+                            invitation.status === 'pending' ? 'secondary' : 'destructive'
+                          }>
+                            {invitation.status === 'accepted' ? 'Aceito' :
+                             invitation.status === 'pending' ? 'Pendente' : 'Rejeitado'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(invitation.invited_at).toLocaleDateString('pt-BR')}
+                        </TableCell>
+                        <TableCell>
+                          {invitation.status === 'pending' && (
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleAcceptInvitation(invitation.id)}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Aceitar
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleRejectInvitation(invitation.id)}
+                              >
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Rejeitar
+                              </Button>
+                            </div>
+                          )}
+                          {invitation.status === 'accepted' && (
+                            <span className="text-sm text-muted-foreground">
+                              Aceito em {invitation.accepted_at ? new Date(invitation.accepted_at).toLocaleDateString('pt-BR') : '-'}
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

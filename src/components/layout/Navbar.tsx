@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, BarChart3, Settings, FileText, Plus, Layout, LogOut, User } from "lucide-react";
+import { Menu, X, BarChart3, Settings, FileText, Plus, Layout, LogOut, User, ChevronDown, Users } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/contexts/PermissionsContext";
 import { toast } from "@/hooks/use-toast";
 import zezmetricsLogo from "@/assets/zezmetrics-logo.png";
 
@@ -18,6 +21,18 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { 
+    availableDashboards, 
+    currentViewingUserId, 
+    switchDashboard, 
+    canEditData,
+    receivedInvitations 
+  } = usePermissions();
+
+  // Encontrar o dashboard atual
+  const currentDashboard = availableDashboards.find(d => d.id === currentViewingUserId);
+  const isViewingOwnDashboard = currentViewingUserId === user?.id;
+  const pendingInvitations = receivedInvitations.filter(inv => inv.status === 'pending');
 
   const handleSignOut = async () => {
     try {
@@ -70,6 +85,58 @@ export function Navbar() {
                 </Link>
               );
             })}
+            
+            {/* Dashboard Selector */}
+            {availableDashboards.length > 1 && (
+              <div className="flex items-center space-x-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <Select 
+                  value={currentViewingUserId || ""} 
+                  onValueChange={switchDashboard}
+                >
+                  <SelectTrigger className="w-48">
+                    <SelectValue>
+                      <div className="flex items-center space-x-2">
+                        <span className="truncate">
+                          {currentDashboard?.company_name || currentDashboard?.user_name || "Dashboard"}
+                        </span>
+                        {!isViewingOwnDashboard && (
+                          <Badge variant="secondary" className="text-xs">
+                            Convidado
+                          </Badge>
+                        )}
+                      </div>
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableDashboards.map((dashboard) => (
+                      <SelectItem key={dashboard.id} value={dashboard.id}>
+                        <div className="flex items-center space-x-2">
+                          <span>{dashboard.company_name || dashboard.user_name}</span>
+                          {dashboard.id === user?.id && (
+                            <Badge variant="default" className="text-xs">
+                              Meu Dashboard
+                            </Badge>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Pending Invitations Indicator */}
+            {pendingInvitations.length > 0 && (
+              <div className="relative">
+                <Link to="/settings" className="flex items-center space-x-1 text-sm text-orange-600 hover:text-orange-700">
+                  <Badge variant="destructive" className="text-xs">
+                    {pendingInvitations.length}
+                  </Badge>
+                  <span>Convites pendentes</span>
+                </Link>
+              </div>
+            )}
             
             {/* User menu */}
             <div className="flex items-center space-x-4 ml-4 pl-4 border-l border-border">
