@@ -185,6 +185,9 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   };
 
   const acceptInvitation = async (invitationId: string) => {
+    console.log('🔵 Context: Tentando aceitar convite:', invitationId);
+    console.log('🔵 Context: Usuário atual:', user?.id);
+    
     const { data, error } = await supabase
       .from('user_permissions')
       .update({
@@ -192,28 +195,37 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
         accepted_at: new Date().toISOString()
       })
       .eq('id', invitationId)
-      .eq('invited_user_id', user?.id); // Garantir que só pode aceitar próprios convites
+      .eq('invited_user_id', user?.id);
+
+    console.log('🔵 Context: Resultado da operação:', { data, error });
 
     if (error) {
-      console.error('Erro ao aceitar convite:', error);
-      throw new Error('Erro ao aceitar convite');
+      console.error('🔴 Context: Erro ao aceitar convite:', error);
+      throw new Error(`Erro ao aceitar convite: ${error.message}`);
     }
 
+    console.log('🔵 Context: Atualizando permissões...');
     await refreshPermissions();
   };
 
   const rejectInvitation = async (invitationId: string) => {
+    console.log('🟡 Context: Tentando rejeitar convite:', invitationId);
+    console.log('🟡 Context: Usuário atual:', user?.id);
+    
     const { data, error } = await supabase
       .from('user_permissions')
       .update({ status: 'rejected' })
       .eq('id', invitationId)
-      .eq('invited_user_id', user?.id); // Garantir que só pode rejeitar próprios convites
+      .eq('invited_user_id', user?.id);
+
+    console.log('🟡 Context: Resultado da operação:', { data, error });
 
     if (error) {
-      console.error('Erro ao rejeitar convite:', error);
-      throw new Error('Erro ao rejeitar convite');
+      console.error('🔴 Context: Erro ao rejeitar convite:', error);
+      throw new Error(`Erro ao rejeitar convite: ${error.message}`);
     }
 
+    console.log('🟡 Context: Atualizando permissões...');
     await refreshPermissions();
   };
 

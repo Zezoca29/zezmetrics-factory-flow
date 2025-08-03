@@ -192,13 +192,18 @@ export default function Settings() {
   };
 
   const handleAcceptInvitation = async (invitationId: string) => {
+    console.log('🟢 Tentando aceitar convite:', invitationId);
+    console.log('🟢 Usuário atual:', user?.id);
+    
     try {
       await acceptInvitation(invitationId);
+      console.log('🟢 Convite aceito com sucesso');
       toast({
         title: "Convite aceito",
         description: "Você agora tem acesso ao dashboard"
       });
     } catch (error) {
+      console.error('🔴 Erro ao aceitar convite:', error);
       toast({
         title: "Erro",
         description: "Erro ao aceitar convite",
@@ -208,13 +213,18 @@ export default function Settings() {
   };
 
   const handleRejectInvitation = async (invitationId: string) => {
+    console.log('🟠 Tentando rejeitar convite:', invitationId);
+    console.log('🟠 Usuário atual:', user?.id);
+    
     try {
       await rejectInvitation(invitationId);
+      console.log('🟠 Convite rejeitado com sucesso');
       toast({
         title: "Convite rejeitado",
         description: "O convite foi rejeitado"
       });
     } catch (error) {
+      console.error('🔴 Erro ao rejeitar convite:', error);
       toast({
         title: "Erro",
         description: "Erro ao rejeitar convite",
