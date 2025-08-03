@@ -93,22 +93,17 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     // Buscar perfis dos admins para os convites recebidos
     if (received && received.length > 0) {
       const adminIds = received.map(inv => inv.admin_user_id);
-      console.log('Buscando perfis para admin IDs:', adminIds);
       
-      const { data: adminProfiles, error: adminError } = await supabase
+      const { data: adminProfiles } = await supabase
         .from('profiles')
         .select('id, email, user_name')
         .in('id', adminIds);
-
-      console.log('Perfis de admins encontrados:', adminProfiles);
-      console.log('Erro ao buscar perfis:', adminError);
 
       const receivedWithProfiles = received.map(invitation => ({
         ...invitation,
         admin_profile: adminProfiles?.find(p => p.id === invitation.admin_user_id)
       }));
       
-      console.log('Convites recebidos com perfis:', receivedWithProfiles);
       setReceivedInvitations(receivedWithProfiles);
     } else {
       setReceivedInvitations([]);
@@ -190,9 +185,6 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   };
 
   const acceptInvitation = async (invitationId: string) => {
-    console.log('Tentando aceitar convite:', invitationId);
-    console.log('Usuário atual:', user?.id);
-    
     const { data, error } = await supabase
       .from('user_permissions')
       .update({
@@ -201,8 +193,6 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       })
       .eq('id', invitationId)
       .eq('invited_user_id', user?.id); // Garantir que só pode aceitar próprios convites
-
-    console.log('Resultado da atualização:', { data, error });
 
     if (error) {
       console.error('Erro ao aceitar convite:', error);
@@ -213,16 +203,11 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   };
 
   const rejectInvitation = async (invitationId: string) => {
-    console.log('Tentando rejeitar convite:', invitationId);
-    console.log('Usuário atual:', user?.id);
-    
     const { data, error } = await supabase
       .from('user_permissions')
       .update({ status: 'rejected' })
       .eq('id', invitationId)
       .eq('invited_user_id', user?.id); // Garantir que só pode rejeitar próprios convites
-
-    console.log('Resultado da rejeição:', { data, error });
 
     if (error) {
       console.error('Erro ao rejeitar convite:', error);
