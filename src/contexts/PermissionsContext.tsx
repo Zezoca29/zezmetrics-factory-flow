@@ -71,8 +71,6 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   const initializeContext = async () => {
     if (!user) return;
 
-    console.log('🔄 Inicializando contexto para usuário:', user.id);
-
     // Verificar se existe contexto salvo
     const { data: context, error } = await supabase
       .from('user_context')
@@ -80,12 +78,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       .eq('user_id', user.id)
       .maybeSingle();
 
-    console.log('🔄 Contexto encontrado no banco:', context);
-    console.log('🔄 Erro ao buscar contexto:', error);
-
     const viewingUserId = context?.viewing_as_user_id || user.id;
-    console.log('🔄 Definindo currentViewingUserId como:', viewingUserId);
-    
     setCurrentViewingUserId(viewingUserId);
   };
 
@@ -178,9 +171,6 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   const switchDashboard = async (userId: string) => {
     if (!user) return;
 
-    console.log('🔄 Trocando dashboard para usuário:', userId);
-    console.log('🔄 Usuário logado:', user.id);
-
     try {
       // Primeiro, tentar atualizar o registro existente
       const { data: updateData, error: updateError } = await supabase
@@ -189,11 +179,8 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
         .eq('user_id', user.id)
         .select();
 
-      console.log('🔄 Resultado do update:', { updateData, updateError });
-
       // Se não existir registro, criar um novo
       if (updateError || !updateData || updateData.length === 0) {
-        console.log('🔄 Criando novo registro de contexto...');
         const { data: insertData, error: insertError } = await supabase
           .from('user_context')
           .insert({
@@ -202,28 +189,22 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
           })
           .select();
 
-        console.log('🔄 Resultado do insert:', { insertData, insertError });
-
         if (insertError) {
-          console.error('🔴 Erro ao criar contexto:', insertError);
+          console.error('Erro ao criar contexto:', insertError);
           return;
         }
       }
 
       setCurrentViewingUserId(userId);
       
-      console.log('🔄 Recarregando página...');
       // Recarregar a página para aplicar o novo contexto
       window.location.reload();
     } catch (error) {
-      console.error('🔴 Erro inesperado ao trocar dashboard:', error);
+      console.error('Erro inesperado ao trocar dashboard:', error);
     }
   };
 
   const acceptInvitation = async (invitationId: string) => {
-    console.log('🔵 Context: Tentando aceitar convite:', invitationId);
-    console.log('🔵 Context: Usuário atual:', user?.id);
-    
     const { data, error } = await supabase
       .from('user_permissions')
       .update({
@@ -233,35 +214,24 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       .eq('id', invitationId)
       .eq('invited_user_id', user?.id);
 
-    console.log('🔵 Context: Resultado da operação:', { data, error });
-
     if (error) {
-      console.error('🔴 Context: Erro ao aceitar convite:', error);
       throw new Error(`Erro ao aceitar convite: ${error.message}`);
     }
 
-    console.log('🔵 Context: Atualizando permissões...');
     await refreshPermissions();
   };
 
   const rejectInvitation = async (invitationId: string) => {
-    console.log('🟡 Context: Tentando rejeitar convite:', invitationId);
-    console.log('🟡 Context: Usuário atual:', user?.id);
-    
     const { data, error } = await supabase
       .from('user_permissions')
       .update({ status: 'rejected' })
       .eq('id', invitationId)
       .eq('invited_user_id', user?.id);
 
-    console.log('🟡 Context: Resultado da operação:', { data, error });
-
     if (error) {
-      console.error('🔴 Context: Erro ao rejeitar convite:', error);
       throw new Error(`Erro ao rejeitar convite: ${error.message}`);
     }
 
-    console.log('🟡 Context: Atualizando permissões...');
     await refreshPermissions();
   };
 
