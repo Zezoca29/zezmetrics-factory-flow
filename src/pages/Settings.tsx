@@ -508,7 +508,7 @@ export default function Settings() {
                         <TableBody>
                           {sentInvitations.map((invitation) => (
                             <TableRow key={invitation.id}>
-                              <TableCell>{invitation.invited_user_id}</TableCell>
+                              <TableCell>{invitation.invited_profile?.email || invitation.invited_user_id}</TableCell>
                               <TableCell>
                                 <Select 
                                   value={invitation.role} 
@@ -586,7 +586,7 @@ export default function Settings() {
                   <TableBody>
                     {receivedInvitations.map((invitation) => (
                       <TableRow key={invitation.id}>
-                        <TableCell>{invitation.admin_user_id}</TableCell>
+                        <TableCell>{invitation.admin_profile?.email || invitation.admin_user_id}</TableCell>
                         <TableCell>
                           <Badge variant="outline">
                             {invitation.role === 'viewer' ? 'Visualizador' :

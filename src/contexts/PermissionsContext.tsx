@@ -10,6 +10,16 @@ interface Permission {
   status: string;
   invited_at: string;
   accepted_at?: string;
+  admin_profile?: {
+    id: string;
+    email: string;
+    user_name: string;
+  };
+  invited_profile?: {
+    id: string;
+    email: string;
+    user_name: string;
+  };
 }
 
 interface UserProfile {
@@ -80,7 +90,23 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       .select('*')
       .eq('invited_user_id', user.id);
 
-    setReceivedInvitations(received || []);
+    // Buscar perfis dos admins para os convites recebidos
+    if (received && received.length > 0) {
+      const adminIds = received.map(inv => inv.admin_user_id);
+      const { data: adminProfiles } = await supabase
+        .from('profiles')
+        .select('id, email, user_name')
+        .in('id', adminIds);
+
+      const receivedWithProfiles = received.map(invitation => ({
+        ...invitation,
+        admin_profile: adminProfiles?.find(p => p.id === invitation.admin_user_id)
+      }));
+      
+      setReceivedInvitations(receivedWithProfiles);
+    } else {
+      setReceivedInvitations([]);
+    }
 
     // Buscar convites enviados
     const { data: sent } = await supabase
@@ -88,7 +114,23 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       .select('*')
       .eq('admin_user_id', user.id);
 
-    setSentInvitations(sent || []);
+    // Buscar perfis dos usuários convidados
+    if (sent && sent.length > 0) {
+      const invitedIds = sent.map(inv => inv.invited_user_id);
+      const { data: invitedProfiles } = await supabase
+        .from('profiles')
+        .select('id, email, user_name')
+        .in('id', invitedIds);
+
+      const sentWithProfiles = sent.map(invitation => ({
+        ...invitation,
+        invited_profile: invitedProfiles?.find(p => p.id === invitation.invited_user_id)
+      }));
+      
+      setSentInvitations(sentWithProfiles);
+    } else {
+      setSentInvitations([]);
+    }
 
     // Buscar dashboards disponíveis (admins que convidaram este usuário)
     const acceptedInvitations = (received || []).filter(inv => inv.status === 'accepted');
@@ -142,7 +184,7 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   };
 
   const acceptInvitation = async (invitationId: string) => {
-    await supabase
+    const { error } = await supabase
       .from('user_permissions')
       .update({
         status: 'accepted',
@@ -150,14 +192,22 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
       })
       .eq('id', invitationId);
 
+    if (error) {
+      throw new Error('Erro ao aceitar convite');
+    }
+
     await refreshPermissions();
   };
 
   const rejectInvitation = async (invitationId: string) => {
-    await supabase
+    const { error } = await supabase
       .from('user_permissions')
       .update({ status: 'rejected' })
       .eq('id', invitationId);
+
+    if (error) {
+      throw new Error('Erro ao rejeitar convite');
+    }
 
     await refreshPermissions();
   };
