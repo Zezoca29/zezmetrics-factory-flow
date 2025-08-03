@@ -181,21 +181,43 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
     console.log('🔄 Trocando dashboard para usuário:', userId);
     console.log('🔄 Usuário logado:', user.id);
 
-    // Atualizar contexto no banco
-    const { data, error } = await supabase
-      .from('user_context')
-      .upsert({
-        user_id: user.id,
-        viewing_as_user_id: userId
-      });
+    try {
+      // Primeiro, tentar atualizar o registro existente
+      const { data: updateData, error: updateError } = await supabase
+        .from('user_context')
+        .update({ viewing_as_user_id: userId })
+        .eq('user_id', user.id)
+        .select();
 
-    console.log('🔄 Resultado do upsert:', { data, error });
+      console.log('🔄 Resultado do update:', { updateData, updateError });
 
-    setCurrentViewingUserId(userId);
-    
-    console.log('🔄 Recarregando página...');
-    // Recarregar a página para aplicar o novo contexto
-    window.location.reload();
+      // Se não existir registro, criar um novo
+      if (updateError || !updateData || updateData.length === 0) {
+        console.log('🔄 Criando novo registro de contexto...');
+        const { data: insertData, error: insertError } = await supabase
+          .from('user_context')
+          .insert({
+            user_id: user.id,
+            viewing_as_user_id: userId
+          })
+          .select();
+
+        console.log('🔄 Resultado do insert:', { insertData, insertError });
+
+        if (insertError) {
+          console.error('🔴 Erro ao criar contexto:', insertError);
+          return;
+        }
+      }
+
+      setCurrentViewingUserId(userId);
+      
+      console.log('🔄 Recarregando página...');
+      // Recarregar a página para aplicar o novo contexto
+      window.location.reload();
+    } catch (error) {
+      console.error('🔴 Erro inesperado ao trocar dashboard:', error);
+    }
   };
 
   const acceptInvitation = async (invitationId: string) => {
