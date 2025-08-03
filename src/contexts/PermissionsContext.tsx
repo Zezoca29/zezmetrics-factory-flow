@@ -71,14 +71,22 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   const initializeContext = async () => {
     if (!user) return;
 
+    console.log('🔄 Inicializando contexto para usuário:', user.id);
+
     // Verificar se existe contexto salvo
-    const { data: context } = await supabase
+    const { data: context, error } = await supabase
       .from('user_context')
       .select('viewing_as_user_id')
       .eq('user_id', user.id)
       .maybeSingle();
 
-    setCurrentViewingUserId(context?.viewing_as_user_id || user.id);
+    console.log('🔄 Contexto encontrado no banco:', context);
+    console.log('🔄 Erro ao buscar contexto:', error);
+
+    const viewingUserId = context?.viewing_as_user_id || user.id;
+    console.log('🔄 Definindo currentViewingUserId como:', viewingUserId);
+    
+    setCurrentViewingUserId(viewingUserId);
   };
 
   const refreshPermissions = async () => {
@@ -170,16 +178,22 @@ export function PermissionsProvider({ children }: { children: ReactNode }) {
   const switchDashboard = async (userId: string) => {
     if (!user) return;
 
+    console.log('🔄 Trocando dashboard para usuário:', userId);
+    console.log('🔄 Usuário logado:', user.id);
+
     // Atualizar contexto no banco
-    await supabase
+    const { data, error } = await supabase
       .from('user_context')
       .upsert({
         user_id: user.id,
         viewing_as_user_id: userId
       });
 
+    console.log('🔄 Resultado do upsert:', { data, error });
+
     setCurrentViewingUserId(userId);
     
+    console.log('🔄 Recarregando página...');
     // Recarregar a página para aplicar o novo contexto
     window.location.reload();
   };
